@@ -20,7 +20,7 @@ const zipCatalog = await listFilesFromZip({ Bucket, Key, client })
 
 const targetFile = `path/to/file/inside-zip.json`;
 const file = files.find ( f => f.fileName === targetFile );
-const fileContent = file.get();
+const fileContent = await file.get();
 ```
 
 # How it works 
