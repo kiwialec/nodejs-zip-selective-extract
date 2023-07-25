@@ -2,22 +2,25 @@ import { S3Client, GetObjectCommand, HeadObjectCommand } from '@aws-sdk/client-s
 import { gunzipSync } from 'zlib';
 
 
-export async function getFileFromZip({ Bucket, Key, targetFile, client }) {
-    try {
-        const fileSize = await getFileSize({ Bucket, Key, client })
-        const { centralDirSize, centralDirOffset } = await extractEocdOffset({ Bucket, Key, fileSize, client });
-        const files = await readCatalog({ Bucket, Key, centralDirSize, centralDirOffset, client });
-        const myfile = files.find(file => file.fileName === targetFile);
-        if (!myfile) return {status: false, content: "File not found inside zip"};
-        
-        const fileDataBuffer = await extractFile({ Bucket, Key, compressedSize: myfile.compressedSize, localFileHeaderOffset: myfile.localFileHeaderOffset, client });
-        const inflatedFile = await inflateFile({ fileDataBuffer });
-        
-        return {status: true, content: inflatedFile};
-    }catch (e){
-        return {status: false, content: e}
-    }
- 
+export async function listFilesFromZip({ Bucket, Key, client }) {
+
+    const fileSize = await getFileSize({ Bucket, Key, client })
+    const { centralDirSize, centralDirOffset } = await extractEocdOffset({ Bucket, Key, fileSize, client });
+    const files = await readCatalog({ Bucket, Key, centralDirSize, centralDirOffset, client });
+    
+    return files.map ( file => {
+        return {
+            fileName: file.fileName,
+            compressedSize: file.compressedSize,
+            uncompressedSize: file.uncompressedSize,
+            get: async () => {
+                const fileDataBuffer = await extractFile({ Bucket, Key, compressedSize: file.compressedSize, localFileHeaderOffset: file.localFileHeaderOffset, client });
+                const inflatedFile = await inflateFile({ fileDataBuffer });
+                return inflatedFile
+            }
+        }
+    })
+
 }
 
 async function extractEocdOffset({ Bucket, Key, fileSize, client }) {
