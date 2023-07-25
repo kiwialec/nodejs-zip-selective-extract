@@ -37,4 +37,4 @@ This may not work out of the box for you. If you want to change it, here's an ov
 # Ideas / Help me improve this
 
 - Support local files by reading ranges with fs 
-- Stream bytes from s3 & decompress instead of buffering it all into memory
+- Stream bytes from s3 & decompress instead of buffering the whole range into memory
