@@ -62,10 +62,31 @@ async function readCatalog({ Bucket, Key, centralDirSize, centralDirOffset, clie
     let compressedSize = centralDirBuffer.readUInt32LE(offset + 20);
     let uncompressedSize = centralDirBuffer.readUInt32LE(offset + 24);
     let compressionMethod = centralDirBuffer.readUInt16LE(offset + 10);
+    let lastModifiedTime = centralDirBuffer.readUInt16LE(offset + 12);
+    let lastModifiedDate = centralDirBuffer.readUInt16LE(offset + 14);
+    let crc32 = centralDirBuffer.readUInt32LE(offset + 16);
+    let externalFileAttributes = centralDirBuffer.readUInt32LE(offset + 38);
+    let internalFileAttributes = centralDirBuffer.readUInt16LE(offset + 36);
+    let diskNumberStart = centralDirBuffer.readUInt16LE(offset + 34);
 
     let fileName = centralDirBuffer.toString('utf8', offset + 46, offset + 46 + fileNameLength);
-    files.push ({ fileName, localFileHeaderOffset, compressedSize, uncompressedSize, fileNameLength, extraFieldLength, fileCommentLength, compressionMethod });
-
+    files.push({
+      fileName, 
+      localFileHeaderOffset, 
+      compressedSize, 
+      uncompressedSize, 
+      fileNameLength, 
+      extraFieldLength, 
+      fileCommentLength, 
+      compressionMethod, 
+      lastModifiedTime, 
+      lastModifiedDate, 
+      crc32, 
+      externalFileAttributes, 
+      internalFileAttributes, 
+      diskNumberStart, 
+      fileComment
+    });
     offset += 46 + fileNameLength + extraFieldLength + fileCommentLength;
   }
 
