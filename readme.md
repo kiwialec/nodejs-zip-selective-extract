@@ -17,13 +17,23 @@ import { S3Client } from '@aws-sdk/client-s3'
 const Bucket = 'bucketName';
 const Key = `prefix/path-to/file.zip`;
 const client = new S3Client({ region: 'eu-west-1' }); 
-const zipCatalog = await listFilesFromZip({ Bucket, Key, client })
-console.log({ zipCatalog })
+const filesInZip = await listFilesFromZip({ Bucket, Key, client })
+console.log({ filesInZip })
 
-const targetFile = `path/to/file/inside-zip.json`;
-const file = zipCatalog.find ( f => f.fileName === targetFile );
-const fileContent = await file.get();
-console.log(fileContent.toString())
+try{
+    const targetFile = `path/to/file/inside-zip.json`;
+    const file = filesInZip.find ( f => f.fileName === targetFile );
+    if(file){
+        const fileContent = await file.get();
+        console.log(fileContent.toString())
+    }else{
+        console.error("File not found in zip")
+    }
+    
+}catch(e){
+    console.error("Error extracting file from zip:",e)
+}
+
 ```
 
 # How it works 
