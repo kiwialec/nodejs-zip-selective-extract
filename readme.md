@@ -13,13 +13,15 @@ Importantly, where every other nodejs zip reading method streams the entire zip 
 ```
 import { listFilesFromZip } from 'nodejs-zip-selective-extract'
 import { S3Client } from '@aws-sdk/client-s3'
+
 const Bucket = 'bucketName';
 const Key = `prefix/path-to/file.zip`;
 const client = new S3Client({ region: 'eu-west-1' }); 
 const zipCatalog = await listFilesFromZip({ Bucket, Key, client })
+console.log({ zipCatalog })
 
 const targetFile = `path/to/file/inside-zip.json`;
-const file = files.find ( f => f.fileName === targetFile );
+const file = zipCatalog.find ( f => f.fileName === targetFile );
 const fileContent = await file.get();
 ```
 
