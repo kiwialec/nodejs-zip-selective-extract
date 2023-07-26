@@ -1,5 +1,5 @@
-import { S3Client, GetObjectCommand, HeadObjectCommand } from '@aws-sdk/client-s3';
-import { inflateSync } from 'zlib';
+import { GetObjectCommand, HeadObjectCommand } from '@aws-sdk/client-s3';
+import { inflateRawSync } from 'zlib';
 
 
 export async function listFilesFromZip({ Bucket, Key, client }) {
@@ -10,14 +10,12 @@ export async function listFilesFromZip({ Bucket, Key, client }) {
     
     return files.map ( file => {
         return {
-            fileName: file.fileName,
-            compressedSize: file.compressedSize,
-            uncompressedSize: file.uncompressedSize,
+            ...file,
             get: async () => {
                 const fileDataBuffer = await extractFile({ Bucket, Key, compressedSize: file.compressedSize, localFileHeaderOffset: file.localFileHeaderOffset, client });
                 let inflatedFile;
                 if (file.compressionMethod === 8) { // DEFLATE
-                  inflatedFile = await inflateSync(fileDataBuffer);
+                  inflatedFile = await inflateRawSync(fileDataBuffer);
                 } else if (file.compressionMethod === 0) { // STORE (no compression)
                   inflatedFile = fileDataBuffer;
                 } else {

@@ -23,6 +23,7 @@ console.log({ zipCatalog })
 const targetFile = `path/to/file/inside-zip.json`;
 const file = zipCatalog.find ( f => f.fileName === targetFile );
 const fileContent = await file.get();
+console.log(fileContent.toString())
 ```
 
 # How it works 
