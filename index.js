@@ -62,18 +62,16 @@ async function readCatalog({ Bucket, Key, centralDirSize, centralDirOffset, clie
     let compressedSize = centralDirBuffer.readUInt32LE(offset + 20);
     let uncompressedSize = centralDirBuffer.readUInt32LE(offset + 24);
     let compressionMethod = centralDirBuffer.readUInt16LE(offset + 10);
-    let lastModifiedTime = centralDirBuffer.readUInt16LE(offset + 12);
-    let lastModifiedDate = centralDirBuffer.readUInt16LE(offset + 14);
     let crc32 = centralDirBuffer.readUInt32LE(offset + 16);
     let externalFileAttributes = centralDirBuffer.readUInt32LE(offset + 38);
     let internalFileAttributes = centralDirBuffer.readUInt16LE(offset + 36);
     let diskNumberStart = centralDirBuffer.readUInt16LE(offset + 34);
     let versionMadeBy = centralDirBuffer.readUInt16LE(offset + 4);
+    let lastModifiedDate = dosDateTimeToDate(centralDirBuffer.readUInt16LE(offset + 14), centralDirBuffer.readUInt16LE(offset + 12));
 
     let fileName = centralDirBuffer.toString('utf8', offset + 46, offset + 46 + fileNameLength);
     let fileComment = fileCommentLength ? centralDirBuffer.toString('utf8', offset + 46 + fileNameLength + extraFieldLength, offset + 46 + fileNameLength + extraFieldLength + fileCommentLength) : '';
 
-    
     files.push({
       fileName, 
       localFileHeaderOffset, 
@@ -83,7 +81,6 @@ async function readCatalog({ Bucket, Key, centralDirSize, centralDirOffset, clie
       extraFieldLength, 
       fileCommentLength, 
       compressionMethod, 
-      lastModifiedTime, 
       lastModifiedDate, 
       crc32, 
       externalFileAttributes, 
@@ -134,4 +131,14 @@ async function getS3Range({ Bucket, Key, start, end, client }) {
 async function getFileSize({ Bucket, Key, client }) {
     const { ContentLength: fileSize } = await client.send(new HeadObjectCommand({ Bucket, Key }));
     return fileSize;
+}
+
+function dosDateTimeToDate(date, time) {
+  const day = date & 0x1F;
+  const month = (date >> 5) & 0x0F;
+  const year = ((date >> 9) & 0x7F) + 1980;
+  const second = (time & 0x1F) * 2;
+  const minute = (time >> 5) & 0x3F;
+  const hour = (time >> 11) & 0x1F;
+  return new Date(year, month - 1, day, hour, minute, second);
 }
