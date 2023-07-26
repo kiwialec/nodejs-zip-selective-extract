@@ -1,5 +1,5 @@
 import { S3Client, GetObjectCommand, HeadObjectCommand } from '@aws-sdk/client-s3';
-import { gunzipSync } from 'zlib';
+import { gunzip } from 'zlib';
 
 
 export async function listFilesFromZip({ Bucket, Key, client }) {
@@ -14,10 +14,8 @@ export async function listFilesFromZip({ Bucket, Key, client }) {
             compressedSize: file.compressedSize,
             uncompressedSize: file.uncompressedSize,
             get: async () => {
-                //const fileDataBuffer = await extractFile({ Bucket, Key, compressedSize: file.compressedSize, localFileHeaderOffset: file.localFileHeaderOffset, client });
-                const fileDataBuffer = await getS3Range({ Bucket, Key, fileStartByte: file.fileStartByte, fileEndByte: file.fileEndByte, client });
-                const inflatedFile = await inflateFile({ fileDataBuffer });
-                return inflatedFile
+                const fileDataBuffer = await extractFile({ Bucket, Key, compressedSize: file.compressedSize, localFileHeaderOffset: file.localFileHeaderOffset, client });
+                return await inflateFile({ fileDataBuffer });
             }
         }
     })
@@ -58,10 +56,8 @@ async function readCatalog({ Bucket, Key, centralDirSize, centralDirOffset, clie
     let compressedSize = centralDirBuffer.readUInt32LE(offset + 20);
     let uncompressedSize = centralDirBuffer.readUInt32LE(offset + 24);
 
-    let fileStartByte = localFileHeaderOffset + 30 + fileNameLength + extraFieldLength
-    let fileEndByte = localFileHeaderOffset + 30 + fileNameLength + extraFieldLength + compressedSize - 1
     let fileName = centralDirBuffer.toString('utf8', offset + 46, offset + 46 + fileNameLength);
-    files.push ({ fileName, compressedSize, uncompressedSize, fileStartByte, fileEndByte });
+    files.push ({ fileName, localFileHeaderOffset, compressedSize, uncompressedSize, fileNameLength, extraFieldLength, fileCommentLength });
 
     offset += 46 + fileNameLength + extraFieldLength + fileCommentLength;
   }
@@ -69,15 +65,28 @@ async function readCatalog({ Bucket, Key, centralDirSize, centralDirOffset, clie
   return files;
 }
 
-async function extractFile({ Bucket, Key, fileStartByte, fileEndByte, client }) {
+async function extractFile({ Bucket, Key, compressedSize, localFileHeaderOffset, client }) {
+  // It is important to retrieve fileNameLength and extraFieldLength again from the localFile header, because they are not guaranteed to be the same as the values in the central directory.
+  let localFileHeaderBuffer = await getS3Range({ Bucket, Key, start: localFileHeaderOffset, end: localFileHeaderOffset + 29, client });
+  let fileNameLength = localFileHeaderBuffer.readUInt16LE(26);
+  let extraFieldLength = localFileHeaderBuffer.readUInt16LE(28);
 
-  let fileDataBuffer = await getS3Range({ Bucket, Key, start: fileStartByte, end: fileEndByte, client });
+  let fileDataBuffer = await getS3Range({ Bucket, Key, start: localFileHeaderOffset + 30 + fileNameLength + extraFieldLength, end: localFileHeaderOffset + 30 + fileNameLength + extraFieldLength + compressedSize - 1, client });
 
   return fileDataBuffer;
 }
 
 async function inflateFile({ fileDataBuffer }) {
-  return gunzipSync(fileDataBuffer);
+  return new Promise ((resolve, reject) => {
+    gunzip(fileDataBuffer, {}, (err, inflatedFile) => {
+      if (err) {
+        reject(err);
+      } else {
+        resolve(inflatedFile);
+      }
+    });
+  })
+ 
 }
 
 async function getS3Range({ Bucket, Key, start, end, client }) {
