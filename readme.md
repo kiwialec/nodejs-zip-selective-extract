@@ -14,7 +14,7 @@ Importantly, where every other nodejs zip reading method streams the entire zip 
 
 Set the S3 config and bucket in the fileHandler, then your key should go in `path`
 ```
-import { listFilesFromZip, LocalFileHandler, s3FileHandler } from 'nodejs-zip-selective-extract'
+import { listFilesFromZip, s3FileHandler } from 'nodejs-zip-selective-extract'
 
 const Bucket = "my-bucket"
 const s3config = { region: "us-east-1" } // put any other AWS config here
@@ -43,7 +43,7 @@ try{
 ## Local filesystem
 
 ```
-import { listFilesFromZip, LocalFileHandler, s3FileHandler } from 'nodejs-zip-selective-extract'
+import { listFilesFromZip, LocalFileHandler } from 'nodejs-zip-selective-extract'
 
 const Bucket = "my-bucket"
 const s3config = { region: "us-east-1" } // put any other AWS config here
