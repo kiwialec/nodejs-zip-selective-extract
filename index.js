@@ -68,7 +68,7 @@ async function readCatalog({ Bucket, Key, centralDirSize, centralDirOffset, clie
     let externalFileAttributes = centralDirBuffer.readUInt32LE(offset + 38);
     let internalFileAttributes = centralDirBuffer.readUInt16LE(offset + 36);
     let diskNumberStart = centralDirBuffer.readUInt16LE(offset + 34);
-
+    let versionMadeBy = centralDirBuffer.readUInt16LE(offset + 4);
     let fileName = centralDirBuffer.toString('utf8', offset + 46, offset + 46 + fileNameLength);
     files.push({
       fileName, 
@@ -85,7 +85,8 @@ async function readCatalog({ Bucket, Key, centralDirSize, centralDirOffset, clie
       externalFileAttributes, 
       internalFileAttributes, 
       diskNumberStart, 
-      fileComment
+      fileComment,
+      versionMadeBy
     });
     offset += 46 + fileNameLength + extraFieldLength + fileCommentLength;
   }
