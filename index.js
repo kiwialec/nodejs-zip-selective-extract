@@ -34,7 +34,6 @@ export async function listFilesFromZip({ path, fileHandler }) {
 async function extractEocdOffset({ path, fileSize, fileHandler }) {
   let bufferLength = 50;
   let buffer = await fileHandler.getByteRange({ path, start: fileSize - bufferLength, end: fileSize - 1 });
-  console.log(buffer)
   let eocdOffset = buffer.indexOf(0x06054b50);
   while (eocdOffset === -1) {
     bufferLength *= 2;
