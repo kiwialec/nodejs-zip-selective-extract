@@ -21,7 +21,7 @@ const s3config = { region: "us-east-1" } // put any other AWS config here
 
 const fileHandler = new s3FileHandler({ s3config, Bucket });
 
-const path = `path/to/file.zip`;
+const path = `path/to/key.zip`;
 const filesInZip = await listFilesFromZip({ path, fileHandler })
 console.log({ filesInZip })
 
@@ -44,9 +44,6 @@ try{
 
 ```
 import { listFilesFromZip, LocalFileHandler } from 'nodejs-zip-selective-extract'
-
-const Bucket = "my-bucket"
-const s3config = { region: "us-east-1" } // put any other AWS config here
 
 const fileHandler = new LocalFileHandler();
 
