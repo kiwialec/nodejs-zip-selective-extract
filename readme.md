@@ -10,14 +10,19 @@ Importantly, where every other nodejs zip reading method streams the entire zip 
 
 # Usage
 
-```
-import { listFilesFromZip } from 'nodejs-zip-selective-extract'
-import { S3Client } from '@aws-sdk/client-s3'
+## S3
 
-const Bucket = 'bucketName';
-const Key = `prefix/path-to/file.zip`;
-const client = new S3Client({ region: 'eu-west-1' }); 
-const filesInZip = await listFilesFromZip({ Bucket, Key, client })
+Set the S3 config and bucket in the fileHandler, then your key should go in `path`
+```
+import { listFilesFromZip, LocalFileHandler, s3FileHandler } from 'nodejs-zip-selective-extract'
+
+const Bucket = "my-bucket"
+const s3config = { region: "us-east-1" } // put any other AWS config here
+
+const fileHandler = new s3Handler({ s3config, Bucket });
+
+const path = `path/to/file.zip`;
+const filesInZip = await listFilesFromZip({ path, fileHandler })
 console.log({ filesInZip })
 
 try{
@@ -33,7 +38,35 @@ try{
 }catch(e){
     console.error("Error extracting file from zip:",e)
 }
+```
 
+## Local filesystem
+
+```
+import { listFilesFromZip, LocalFileHandler, s3FileHandler } from 'nodejs-zip-selective-extract'
+
+const Bucket = "my-bucket"
+const s3config = { region: "us-east-1" } // put any other AWS config here
+
+const fileHandler = new LocalFileHandler();
+
+const path = `/path/to/file.zip`;
+const filesInZip = await listFilesFromZip({ path, fileHandler })
+console.log({ filesInZip })
+
+try{
+    const targetFile = `path/to/file/inside-zip.json`;
+    const file = filesInZip.find ( f => f.fileName === targetFile );
+    if(file){
+        const fileContent = await file.get();
+        console.log(fileContent.toString())
+    }else{
+        console.error("File not found in zip")
+    }
+    
+}catch(e){
+    console.error("Error extracting file from zip:",e)
+}
 ```
 
 # How it works 

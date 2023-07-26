@@ -1,18 +1,21 @@
-import { GetObjectCommand, HeadObjectCommand } from '@aws-sdk/client-s3';
 import { inflateRawSync } from 'zlib';
+import { LocalFileHandler } from './lib/local.js';
+import { s3FileHandler } from './lib/s3.js';
 
+export {LocalFileHandler, s3FileHandler}
 
-export async function listFilesFromZip({ Bucket, Key, client }) {
+export async function listFilesFromZip({ path, fileHandler }) {
 
-    const fileSize = await getFileSize({ Bucket, Key, client })
-    const { centralDirSize, centralDirOffset } = await extractEocdOffset({ Bucket, Key, fileSize, client });
-    const files = await readCatalog({ Bucket, Key, centralDirSize, centralDirOffset, client });
+    const fileSize = await fileHandler.getFileSize({ path })
+    
+    const { centralDirSize, centralDirOffset } = await extractEocdOffset({ path, fileSize, fileHandler });
+    const files = await readCatalog({ path, centralDirSize, centralDirOffset, fileHandler });
     
     return files.map ( file => {
         return {
             ...file,
             get: async () => {
-                const fileDataBuffer = await extractFile({ Bucket, Key, compressedSize: file.compressedSize, localFileHeaderOffset: file.localFileHeaderOffset, client });
+                const fileDataBuffer = await extractFile({ path, compressedSize: file.compressedSize, localFileHeaderOffset: file.localFileHeaderOffset, fileHandler });
                 let inflatedFile;
                 if (file.compressionMethod === 8) { // DEFLATE
                   inflatedFile = await inflateRawSync(fileDataBuffer);
@@ -28,14 +31,14 @@ export async function listFilesFromZip({ Bucket, Key, client }) {
 
 }
 
-async function extractEocdOffset({ Bucket, Key, fileSize, client }) {
+async function extractEocdOffset({ path, fileSize, fileHandler }) {
   let bufferLength = 50;
-  let buffer = await getS3Range({ Bucket, Key, start: fileSize - bufferLength, end: fileSize - 1, client });
-
+  let buffer = await fileHandler.getByteRange({ path, start: fileSize - bufferLength, end: fileSize - 1 });
+  console.log(buffer)
   let eocdOffset = buffer.indexOf(0x06054b50);
   while (eocdOffset === -1) {
     bufferLength *= 2;
-    buffer = await getS3Range({ Bucket, Key, start: fileSize - bufferLength, end: fileSize - 1, client });
+    buffer = await fileHandler.getByteRange({ path, start: fileSize - bufferLength, end: fileSize - 1 });
     eocdOffset = buffer.indexOf(0x06054b50);
   }
 
@@ -45,8 +48,8 @@ async function extractEocdOffset({ Bucket, Key, fileSize, client }) {
   return { centralDirSize, centralDirOffset };
 }
 
-async function readCatalog({ Bucket, Key, centralDirSize, centralDirOffset, client }) {
-  let centralDirBuffer = await getS3Range({ Bucket, Key, start: centralDirOffset, end: centralDirOffset + centralDirSize - 1, client });
+async function readCatalog({ path, centralDirSize, centralDirOffset, fileHandler }) {
+  let centralDirBuffer = await fileHandler.getByteRange({ path, start: centralDirOffset, end: centralDirOffset + centralDirSize - 1 });
 
   let offset = 0;
   const files = [];
@@ -95,43 +98,17 @@ async function readCatalog({ Bucket, Key, centralDirSize, centralDirOffset, clie
   return files;
 }
 
-async function extractFile({ Bucket, Key, compressedSize, localFileHeaderOffset, client }) {
+async function extractFile({ path, compressedSize, localFileHeaderOffset, fileHandler }) {
   // It is important to retrieve fileNameLength and extraFieldLength again from the localFile header, because they are not guaranteed to be the same as the values in the central directory.
-  let localFileHeaderBuffer = await getS3Range({ Bucket, Key, start: localFileHeaderOffset, end: localFileHeaderOffset + 29, client });
+  let localFileHeaderBuffer = await fileHandler.getByteRange({ path, start: localFileHeaderOffset, end: localFileHeaderOffset + 29 });
   let fileNameLength = localFileHeaderBuffer.readUInt16LE(26);
   let extraFieldLength = localFileHeaderBuffer.readUInt16LE(28);
 
-  let fileDataBuffer = await getS3Range({ Bucket, Key, start: localFileHeaderOffset + 30 + fileNameLength + extraFieldLength, end: localFileHeaderOffset + 30 + fileNameLength + extraFieldLength + compressedSize - 1, client });
+  let fileDataBuffer = await fileHandler.getByteRange({ path, start: localFileHeaderOffset + 30 + fileNameLength + extraFieldLength, end: localFileHeaderOffset + 30 + fileNameLength + extraFieldLength + compressedSize - 1 });
 
   return fileDataBuffer;
 }
 
-
-
-async function getS3Range({ Bucket, Key, start, end, client }) {
-    const s3Params = {
-        Bucket,
-        Key,
-        Range: `bytes=${start}-${end}`
-      }
-
-    const { Body } = await client.send(
-      new GetObjectCommand(s3Params)
-    );
-  
-    const chunks = [];
-    for await (const chunk of Body) {
-      chunks.push(chunk);
-    }
-  
-    return Buffer.concat(chunks);
-}
-
-
-async function getFileSize({ Bucket, Key, client }) {
-    const { ContentLength: fileSize } = await client.send(new HeadObjectCommand({ Bucket, Key }));
-    return fileSize;
-}
 
 function dosDateTimeToDate(date, time) {
   const day = date & 0x1F;
