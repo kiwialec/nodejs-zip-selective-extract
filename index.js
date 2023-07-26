@@ -1,5 +1,5 @@
 import { S3Client, GetObjectCommand, HeadObjectCommand } from '@aws-sdk/client-s3';
-import { gunzip } from 'zlib';
+import { inflateSync } from 'zlib';
 
 
 export async function listFilesFromZip({ Bucket, Key, client }) {
@@ -15,7 +15,15 @@ export async function listFilesFromZip({ Bucket, Key, client }) {
             uncompressedSize: file.uncompressedSize,
             get: async () => {
                 const fileDataBuffer = await extractFile({ Bucket, Key, compressedSize: file.compressedSize, localFileHeaderOffset: file.localFileHeaderOffset, client });
-                return await inflateFile({ fileDataBuffer });
+                let inflatedFile;
+                if (file.compressionMethod === 8) { // DEFLATE
+                  inflatedFile = await inflateSync(fileDataBuffer);
+                } else if (file.compressionMethod === 0) { // STORE (no compression)
+                  inflatedFile = fileDataBuffer;
+                } else {
+                  throw new Error(`Unsupported compression method: ${file.compressionMethod}`);
+                }
+                return inflatedFile;
             }
         }
     })
@@ -55,9 +63,10 @@ async function readCatalog({ Bucket, Key, centralDirSize, centralDirOffset, clie
     let localFileHeaderOffset = centralDirBuffer.readUInt32LE(offset + 42);
     let compressedSize = centralDirBuffer.readUInt32LE(offset + 20);
     let uncompressedSize = centralDirBuffer.readUInt32LE(offset + 24);
+    let compressionMethod = centralDirBuffer.readUInt16LE(offset + 10);
 
     let fileName = centralDirBuffer.toString('utf8', offset + 46, offset + 46 + fileNameLength);
-    files.push ({ fileName, localFileHeaderOffset, compressedSize, uncompressedSize, fileNameLength, extraFieldLength, fileCommentLength });
+    files.push ({ fileName, localFileHeaderOffset, compressedSize, uncompressedSize, fileNameLength, extraFieldLength, fileCommentLength, compressionMethod });
 
     offset += 46 + fileNameLength + extraFieldLength + fileCommentLength;
   }
@@ -76,18 +85,7 @@ async function extractFile({ Bucket, Key, compressedSize, localFileHeaderOffset,
   return fileDataBuffer;
 }
 
-async function inflateFile({ fileDataBuffer }) {
-  return new Promise ((resolve, reject) => {
-    gunzip(fileDataBuffer, {}, (err, inflatedFile) => {
-      if (err) {
-        reject(err);
-      } else {
-        resolve(inflatedFile);
-      }
-    });
-  })
- 
-}
+
 
 async function getS3Range({ Bucket, Key, start, end, client }) {
     const s3Params = {
