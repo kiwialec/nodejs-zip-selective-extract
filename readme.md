@@ -66,6 +66,16 @@ try{
 }
 ```
 
+## Any other filesystem
+
+The library is structured to use the provided FileHandler class to make it simple to integrate any arbitrary filesystem. 
+
+Copy the ./lib/s3.js or ./lib/local.js format and ensure your class has the following methods:
+- getByteRange({ path, start, end }) - output should be a buffer
+- getFileSize({ path }) - output should be an integter (bytes)
+
+Feel free to create a PR with any new FileHandler classes.
+
 # How it works 
 
 This may not work out of the box for you. If you want to change it, here's an overview:
