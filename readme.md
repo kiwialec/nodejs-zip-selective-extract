@@ -4,7 +4,7 @@ Efficiently extract arbitrary files from zip files.
 
 From what I can see, every other nodejs zip reads the entire zip file into the compute and ignores non-relevant bytes, this isn't great if you just want one file from a large zip archive, and awful if your zip is stored on a high latency or remote filesystem (i.e. S3). This library utilises the zip file's central directory (a catalog of each file and it's location within the zip) to only read the relevant byte ranges from the zip file, meaning that it can efficiently give you access to small slices of data within a large (and potentially remote) zip archive.
 
-The canonical use-case that I'm building for is storing many small files (10-100KB) in large zip files on S3 (thereby avoiding excession PutObject and lifecycle request costs), and retrieving an individual file at runtime.
+The canonical use-case that I'm building for is storing many small files (10-100KB) in large zip files on S3 (thereby avoiding excessive PutObject and lifecycle request costs), and retrieving an individual file at runtime.
 
 The library assumes everything you tell it is correct and doesn't do any sanitisation of inputs. Caveat emptor.
 
