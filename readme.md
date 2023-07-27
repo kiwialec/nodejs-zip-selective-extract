@@ -1,8 +1,12 @@
 # Zip Selective Extract for NodeJS
 
-Efficiently extract arbitrary files from zip files that are hosted on S3.
+Efficiently extract arbitrary files from zip files.
 
-Importantly, where every other nodejs zip reading method streams the entire zip file from s3 into the compute and ignores non-relevant bytes, this library uses byte range selection to request only the relevant data from S3 to begin with.
+From what I can see, every other nodejs zip reads the entire zip file into the compute and ignores non-relevant bytes, this isn't great if you just want one file from a large zip archive, and awful if your zip is stored on a high latency or remote filesystem (i.e. S3). This library utilises the zip file's central directory (a catalog of each file and it's location within the zip) to only read the relevant byte ranges from the zip file, meaning that it can efficiently give you access to small slices of data within a large (and potentially remote) zip archive.
+
+The canonical use-case that I'm building for is storing many small files (10-100KB) in large zip files on S3 (thereby avoiding excession PutObject and lifecycle request costs), and retrieving an individual file at runtime.
+
+The library assumes everything you tell it is correct and doesn't do any sanitisation of inputs. Caveat emptor.
 
 # Installation
 
@@ -75,6 +79,33 @@ Copy the ./lib/s3.js or ./lib/local.js format and ensure your class has the foll
 - getFileSize({ path }) - output should be an integter (bytes)
 
 Feel free to create a PR with any new FileHandler classes.
+
+# listFilesFromZip output
+
+The `listFilesFromZip` function will return an object array with all relevant info about the compressed files. This is pulled verbatim from the central directory, with the exception of the lastModifiedDate (which is converted to a JS Date object):
+```javascript
+[
+    {
+      fileName: 'example.txt',
+      localFileHeaderOffset: 0,
+      compressedSize: 20215,
+      uncompressedSize: 108098,
+      fileNameLength: 17,
+      extraFieldLength: 0,
+      fileCommentLength: 0,
+      compressionMethod: 8, // compression method of 8 is deflated, 0 is stored
+      lastModifiedDate: 2023-07-25T20:43:12.000Z,
+      crc32: 1781530683,
+      externalFileAttributes: 32,
+      internalFileAttributes: 1,
+      diskNumberStart: 0,
+      fileComment: '',
+      versionMadeBy: 20,
+      get: [AsyncFunction: get] // calling the get() function will download the file and undertake the appropriate decompression
+    },
+    ...
+]
+```
 
 # How it works 
 
