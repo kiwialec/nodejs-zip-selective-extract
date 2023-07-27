@@ -17,7 +17,7 @@ The library assumes everything you tell it is correct and doesn't do any sanitis
 ## S3
 
 Set the S3 config and bucket in the fileHandler, then your key should go in `path`
-```
+```javascript
 import { listFilesFromZip, s3FileHandler } from 'nodejs-zip-selective-extract'
 
 const Bucket = "my-bucket"
@@ -46,7 +46,7 @@ try{
 
 ## Local filesystem
 
-```
+```javascript
 import { listFilesFromZip, LocalFileHandler } from 'nodejs-zip-selective-extract'
 
 const fileHandler = new LocalFileHandler();
