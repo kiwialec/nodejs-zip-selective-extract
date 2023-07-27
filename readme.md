@@ -90,7 +90,7 @@ The `listFilesFromZip` function will return an object array with all relevant in
       localFileHeaderOffset: 0,
       compressedSize: 20215,
       uncompressedSize: 108098,
-      fileNameLength: 17,
+      fileNameLength: 11,
       extraFieldLength: 0,
       fileCommentLength: 0,
       compressionMethod: 8, // compression method of 8 is deflated, 0 is stored
